@@ -1,0 +1,11 @@
+Failed to compile.
+./src/app/api/movies/route.ts:59:19
+Type error: Object is possibly 'undefined'.
+  57 |   const { data: profile } = await supabase.from('profiles').select('*').eq('user_id', user.id).single();
+  58 |   const rank: Record<string, number> = { user: 0, moderator: 1, editor: 1, admin: 2, super_admin: 3 };
+> 59 |   if (!profile || rank[profile.role] < rank[minimum]) {
+     |                   ^
+  60 |     return { user: null, profile: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
+  61 |   }
+  62 |   return { user, profile };
+Error: Command "npm run build" exited with 1
