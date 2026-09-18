@@ -36,26 +36,48 @@ export async function getSessionProfile() {
 }
 
 /**
- * Redirects to /login (or / if signed in but under-privileged)
+ * Redirects to /admin-login (or / if signed in but under-privileged)
  * unless the caller's role meets `minimum`.
  *
  * Use at the top of every admin page/layout and every mutating
- * Route Handler.
+ * Route Handler that is admin-only.
  */
 export async function requireRole(minimum: UserRole) {
   const session = await getSessionProfile();
 
   if (!session) {
-    redirect('/login?redirectTo=/admin');
+    redirect('/admin-login?redirectTo=/admin');
   }
 
   const userRole = session.profile.role as UserRole;
 
   if (ROLE_RANK[userRole] < ROLE_RANK[minimum]) {
-    redirect('/');
+    // Signed in, but not privileged enough — send back to the admin
+    // login screen with an explanatory flag rather than a silent
+    // bounce to "/", which looked like the login had simply failed.
+    redirect('/admin-login?error=forbidden');
   }
 
   return session;
+}
+
+/**
+ * Same role check as requireRole, but for Route Handlers (API routes),
+ * which must return JSON instead of triggering a redirect. Use this at
+ * the top of any admin-only POST/PATCH/DELETE handler.
+ */
+export async function requireRoleForApi(minimum: UserRole) {
+  const session = await getSessionProfile();
+
+  if (!session) {
+    return { session: null, error: { message: 'Sign in required', status: 401 as const } };
+  }
+
+  if (ROLE_RANK[session.profile.role] < ROLE_RANK[minimum]) {
+    return { session: null, error: { message: 'Forbidden', status: 403 as const } };
+  }
+
+  return { session, error: null };
 }
 
 export async function requireUser() {
