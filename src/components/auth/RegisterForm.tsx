@@ -3,7 +3,9 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { FormField } from './FormField';
+import { ResendVerification } from './ResendVerification';
 import { registerSchema } from '@/lib/validations';
+import { friendlyAuthError } from '@/lib/authErrors';
 
 export function RegisterForm() {
   const [form, setForm] = useState({ email: '', password: '', confirmPassword: '', displayName: '' });
@@ -25,14 +27,16 @@ export function RegisterForm() {
       options: { data: { display_name: form.displayName }, emailRedirectTo: `${window.location.origin}/verify-email` },
     });
     setLoading(false);
-    if (error) { setError(error.message); return; }
+    if (error) { setError(friendlyAuthError(error.message)); return; }
     setDone(true);
   }
 
   if (done) {
     return (
       <div className="text-sm text-ink-dim">
-        Check <strong>{form.email}</strong> for a verification link to activate your account.
+        <p>Check <strong>{form.email}</strong> for a verification link to activate your account.</p>
+        <p className="text-ink-faint text-xs mt-2">Didn&apos;t get it? Check your spam folder, or:</p>
+        <ResendVerification email={form.email} />
       </div>
     );
   }
