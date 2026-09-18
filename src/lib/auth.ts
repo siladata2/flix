@@ -1,4 +1,3 @@
-
 // Server-only role helpers. Every admin page and every mutating API route
 // must call one of these before doing anything — the RLS policies are the
 // real backstop, but failing fast here gives clean UX instead of a raw
@@ -73,7 +72,9 @@ export async function requireRoleForApi(minimum: UserRole) {
     return { session: null, error: { message: 'Sign in required', status: 401 as const } };
   }
 
-  if (ROLE_RANK[session.profile.role] < ROLE_RANK[minimum]) {
+  const callerRole = session.profile.role as UserRole;
+
+  if (ROLE_RANK[callerRole] < ROLE_RANK[minimum]) {
     return { session: null, error: { message: 'Forbidden', status: 403 as const } };
   }
 
