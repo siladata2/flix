@@ -35,12 +35,14 @@ export function ReelsViewer({
   async function like() {
     if (!reel) return;
 
+    const reelId = reel.id;
+
     const res = await fetch('/api/likes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         content_type: 'reel',
-        content_id: reel.id,
+        content_id: reelId,
       }),
     });
 
@@ -55,12 +57,14 @@ export function ReelsViewer({
   async function save() {
     if (!reel) return;
 
+    const reelId = reel.id;
+
     const res = await fetch('/api/saved', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         content_type: 'reel',
-        content_id: reel.id,
+        content_id: reelId,
       }),
     });
 
@@ -75,12 +79,14 @@ export function ReelsViewer({
   async function report() {
     if (!reel) return;
 
+    const reelId = reel.id;
+
     const res = await fetch('/api/reports', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         content_type: 'reel',
-        content_id: reel.id,
+        content_id: reelId,
         reason: 'user_reported',
       }),
     });
@@ -96,7 +102,8 @@ export function ReelsViewer({
   async function share() {
     if (!reel) return;
 
-    const url = `${window.location.origin}/reels/${reel.id}`;
+    const reelId = reel.id;
+    const url = `${window.location.origin}/reels/${reelId}`;
 
     if (navigator.share) {
       try {
@@ -129,9 +136,11 @@ export function ReelsViewer({
           muted={muted}
           playsInline
           onClick={(e) => {
-            e.currentTarget.paused
-              ? e.currentTarget.play()
-              : e.currentTarget.pause();
+            if (e.currentTarget.paused) {
+              e.currentTarget.play();
+            } else {
+              e.currentTarget.pause();
+            }
           }}
         />
 
