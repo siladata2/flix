@@ -3,44 +3,31 @@ import { createClient } from '@/lib/supabase/server';
 import { requireRoleForApi } from '@/lib/auth';
 import { movieInputSchema } from '@/lib/validations';
 
-/**
- * Reference CRUD pattern for admin-managed content. The same shape
- * (requireRoleForApi → validate → mutate → audit log) applies to series,
- * episodes, reels, recaps, and categories — replicate this file for each.
- */
-export async function GET(req: NextRequest) {
-  const supabase = createClient();
-  const status = req.nextUrl.searchParams.get('status');
-  let query = supabase.from('movies').select('*').order('created_at', { ascending: false }).limit(50);
-  if (status) query = query.eq('status', status);
-  const { data, error } = await query;
-  if (error) return NextResponse.json({ error: 'Could not load movies' }, { status: 500 });
-  return NextResponse.json({ movies: data });
-}
-
-export async function POST(req: NextRequest) {
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error: authError } = await requireRoleForApi('editor');
   if (!session) return NextResponse.json({ error: authError.message }, { status: authError.status });
 
-  const parsed = movieInputSchema.safeParse(await req.json().catch(() => null));
+  const parsed = movieInputSchema.partial().safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from('movies')
-    .insert({ ...parsed.data, created_by: session.user.id, status: parsed.data.is_published ? 'published' : 'draft' })
-    .select()
-    .single();
+  const { data, error } = await supabase.from('movies').update(parsed.data).eq('id', params.id).select().single();
+  if (error) return NextResponse.json({ error: 'Update failed' }, { status: 400 });
 
-  if (error) return NextResponse.json({ error: 'Could not create movie — check the slug is unique' }, { status: 400 });
+  await supabase.from('audit_logs').insert({ actor_id: session.user.id, action: 'movie.update', entity_type: 'movie', entity_id: params.id, metadata: parsed.data });
 
-  await supabase.from('audit_logs').insert({
-    actor_id: session.user.id,
-    action: 'movie.create',
-    entity_type: 'movie',
-    entity_id: data.id,
-    metadata: { title: data.title },
-  });
+  return NextResponse.json({ movie: data });
+}
 
-  return NextResponse.json({ movie: data }, { status: 201 });
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  const { session, error: authError } = await requireRoleForApi('admin');
+  if (!session) return NextResponse.json({ error: authError.message }, { status: authError.status });
+
+  const supabase = createClient();
+  const { error } = await supabase.from('movies').update({ status: 'archived', is_published: false }).eq('id', params.id);
+  if (error) return NextResponse.json({ error: 'Could not archive movie' }, { status: 400 });
+
+  await supabase.from('audit_logs').insert({ actor_id: session.user.id, action: 'movie.archive', entity_type: 'movie', entity_id: params.id });
+
+  return NextResponse.json({ ok: true });
 }
