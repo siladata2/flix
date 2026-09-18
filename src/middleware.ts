@@ -6,10 +6,15 @@ import { updateSession } from '@/lib/supabase/middleware';
 
 export async function middleware(request: NextRequest) {
   const { response, user } = await updateSession(request);
+  const { pathname } = request.nextUrl;
 
-  if (request.nextUrl.pathname.startsWith('/admin') && !user) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
+  // Exact-prefix match (not a bare substring check) so routes like
+  // /admin-login are never accidentally swept into the /admin/** gate.
+  const isAdminRoute = pathname === '/admin' || pathname.startsWith('/admin/');
+
+  if (isAdminRoute && !user) {
+    const loginUrl = new URL('/admin-login', request.url);
+    loginUrl.searchParams.set('redirectTo', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
